@@ -53,22 +53,22 @@ CineTrack is a local-first application built with **Tauri**, **React**, **TypeSc
 
 - Mark individual episodes as watched or unwatched, optionally attaching a note to that specific watch (kept separate from earlier watches of the same title, so a rewatch never overwrites a previous note).
 - Mark an entire season or series at once.
-- View overall and season-by-season progress, including an explicit "Up to date" state for shows where every currently aired episode has been watched, and how much viewing time is left to catch up.
+- View overall and season-by-season progress, including an explicit "Up to date" state for shows where every currently aired episode has been watched, and how much viewing time is left to catch up — per series, and in total on the home page and in Stats. Progress counts only episodes that have aired, so a series you're caught up on reads as such even when more are announced.
 - When you mark a later episode, get offered to mark the earlier ones too; turn on spoiler protection to hide titles and synopses of episodes you haven't seen.
 - Quickly resume series already in progress from the home page.
 - Get notified when a release date or new episode is coming up via the calendar — with relative countdown chips and a compact weekly agenda on the home page — and set streaming-availability alerts.
 
 ### Personalise
 
-- Switch between light and dark themes and several accent colours.
+- Switch between light, dark and system (follows your OS, live) themes and several accent colours.
 - Enable compact mode or reduced motion.
 - Set a default filter for search.
 - Declare which streaming services you subscribe to, used to prioritise Watch Tonight and Discover.
 - Sign in with Clerk (email code or social OAuth) when optional sign-in is configured; the app otherwise works fully offline with a local-only profile. A signed-in account can sync its library, history, episode ratings and preferences across devices (Supabase Postgres is the sync backend), with a status card showing the next check and any conflict history.
 - Manage your account (email, account deletion) from Settings, split notifications into calendar, availability and desktop toggles, choose how early release reminders fire, and rebind the keyboard shortcuts.
-- Open a command palette from anywhere (including a global desktop shortcut) to search titles and mark them seen or add them to your library without leaving the current page.
+- Open a command palette from anywhere (including a global desktop shortcut) to search titles and mark them seen or add them to your library without leaving the current page — or, on a title's page, log a watch with its date and a note, and mark or open a series' next episode.
 - Take a guided tour of the key features on first launch, with TV Time import offered right on the welcome screen.
-- Review viewing statistics and a yearly "wrapped" summary, plus a monthly recap (exportable, like milestones and Wrapped, as a shareable image card), a viewing heatmap and year calendar, expanded rewatch analytics, personal rating distribution and evolution, watch milestones, and an opt-in "On this day" home surface revisiting past watches.
+- Review viewing statistics and a yearly "wrapped" summary, plus a monthly recap (exportable, like milestones and Wrapped, as a shareable image card), a viewing heatmap and year calendar, the directors and actors you watch most, expanded rewatch analytics, personal rating distribution and evolution, watch milestones, and an opt-in "On this day" home surface revisiting past watches.
 
 ## 🧱 Technology stack
 
@@ -318,13 +318,6 @@ CineTrack aims to become a **private, local-first home for movie and TV tracking
 | `SYNC`         | Optional multi-device functionality                |
 | `SOCIAL`       | Sharing, profiles and community                    |
 
-### ✅ Recently shipped
-
-- [x] **`STREAMING` — Notification lead time in Settings**, from release day up to a week ahead.
-- [x] **`INSIGHTS` — Shareable monthly-recap and milestone cards**, on the same image-export path as Wrapped.
-- [x] **`DISCOVERY` — Reasons on Watch Tonight picks** (genre affinity, highly rated).
-- [x] **`TRACKING` — Time left to catch up** on a series, from the runtime of every aired, unwatched episode.
-
 ### 🟠 P1 — Core experience
 
 P1 should make CineTrack better at answering: **What can I watch now? What should I watch next? What am I waiting for?**
@@ -332,7 +325,7 @@ P1 should make CineTrack better at answering: **What can I watch now? What shoul
 #### Series tracking
 
 - [ ] **`TRACKING` — Add historical watch-date backfilling.**
-      When marking an older movie or episode as watched, offer **Watched now** and **Choose date**. _The repository and Rust commands already accept a `watchedAt` (and refuse future dates); only the UI still always sends "now"._
+      When marking an older movie or episode as watched, offer **Watched now** and **Choose date**. _The command palette's "Log a watch…" already does this for a movie; the watched toggles on movie and episode pages, and episodes in general, still always use "now"._
 
 - [ ] **`TRACKING` — Edit a past watch.**
       Correct the date or note of an existing viewing-history entry instead of having to undo it and log it again. Needs an update command for viewing events, which doesn't exist yet.
@@ -379,27 +372,11 @@ P1 should make CineTrack better at answering: **What can I watch now? What shoul
 - [ ] **`DATA` — Keep every TV Time watch, not just the first.**
       The TV Time importer keeps only the earliest date of a rewatched title; import each watch as its own viewing event.
 
-#### Onboarding & desktop experience
-
-- [ ] **`UX` — Add a “System” theme mode.**
-      Add **System** alongside Light and Dark and follow operating-system appearance changes live.
-
 ### 🟡 P2 — Power features
 
 P2 focuses on users with larger libraries and longer viewing histories, while making existing CineTrack data more useful.
 
-#### Personal history & insights
-
-- [ ] **`INSIGHTS` — Add director and actor statistics.**
-      Show the directors and actors that appear most often across your viewing history. _The "from directors you watch most" rails already compute this from your library; a stats view mostly needs a proper credits cache._
-
-- [ ] **`INSIGHTS` — Show your total catch-up backlog.**
-      Sum the per-series "time left to catch up" across every series in progress, on the home page and in Stats.
-
-#### Desktop experience
-
-- [ ] **`UX` — Finish the keyboard-first Quick Log command.**
-      The command palette already marks movies seen/unseen and adds/removes library entries. Still missing: **Log watch** with a note and date, quick-logging an episode, and **Open next episode**.
+#### Languages
 
 - [ ] **`UX` — Add more translations.**
       Expand beyond English and French based on actual user and contributor demand.
