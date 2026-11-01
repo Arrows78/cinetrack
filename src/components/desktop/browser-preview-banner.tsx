@@ -24,7 +24,7 @@ export function BrowserPreviewBanner() {
     // floating outside every one.
     <aside
       aria-label={t("browserPreview.label")}
-      className="fixed bottom-[calc(5rem+env(safe-area-inset-bottom))] left-1/2 z-overlay flex max-w-[calc(100%-2rem)] -translate-x-1/2 items-center gap-2 rounded-full border border-warning/30 bg-background px-4 py-2 text-body-sm shadow-xl lg:bottom-4"
+      className="fixed bottom-[calc(5rem_+_env(safe-area-inset-bottom))] left-1/2 z-overlay flex max-w-[calc(100%_-_2rem)] -translate-x-1/2 items-center gap-2 rounded-full border border-warning/30 bg-background px-4 py-2 text-body-sm shadow-xl lg:bottom-4"
     >
       <MonitorX className="size-4 text-warning" aria-hidden="true" />
       {t("browserPreview.message")}
