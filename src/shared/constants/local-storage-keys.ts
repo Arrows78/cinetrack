@@ -34,6 +34,9 @@ export const LAST_AUTO_BACKUP_KEY = "cinetrack.last-auto-backup";
 /** Flag set when the last automatic backup attempt failed. */
 export const LAST_AUTO_BACKUP_FAILED_KEY = "cinetrack.last-auto-backup-failed";
 
+/** Recent device-local cloud sync runs for one profile. */
+export const syncRunHistoryKey = (profileId: string) => `cinetrack.sync-run-history.v1:${profileId}`;
+
 /** Ids of the calendar reminders already delivered to one profile. */
 export const sentNotificationsKey = (profileId: string) => `cinetrack.sent-notifications.v2:${profileId}`;
 
