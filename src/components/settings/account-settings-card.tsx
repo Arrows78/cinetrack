@@ -81,7 +81,21 @@ export function AccountSettingsCard() {
     try {
       const trimmed = newEmail.trim().toLowerCase();
       const emailAddress = await user.createEmailAddress({ email: trimmed });
-      await emailAddress.prepareVerification({ strategy: "email_code" });
+      try {
+        await emailAddress.prepareVerification({ strategy: "email_code" });
+      } catch (error) {
+        // createEmailAddress persists immediately in Clerk. If preparing the
+        // verification fails, remove that newly-created address so repeated
+        // retries don't silently accumulate unusable account emails.
+        try {
+          await emailAddress.destroy();
+        } catch (cleanupError) {
+          logger.warn(
+            `Failed to clean up an email address after verification setup failed: ${cleanupError instanceof Error ? cleanupError.message : String(cleanupError)}`
+          );
+        }
+        throw error;
+      }
       setPendingEmailId(emailAddress.id);
       setPreviousPrimaryEmailId(user.primaryEmailAddressId ?? null);
       setStep("verify");
@@ -130,7 +144,19 @@ export function AccountSettingsCard() {
     }
   };
 
-  const cancelEmailChange = () => {
+  const cancelEmailChange = async () => {
+    if (pendingEmailId && pendingEmailId !== user.primaryEmailAddressId) {
+      const pending = user.emailAddresses.find((address) => address.id === pendingEmailId);
+      try {
+        await pending?.destroy();
+      } catch (cleanupError) {
+        // Cancelling the UI should still succeed even if Clerk refuses the
+        // best-effort cleanup; log it so diagnostics explain the stale entry.
+        logger.warn(
+          `Failed to remove the abandoned email address: ${cleanupError instanceof Error ? cleanupError.message : String(cleanupError)}`
+        );
+      }
+    }
     setStep("idle");
     setCode("");
     setEmailError(null);
@@ -215,7 +241,7 @@ export function AccountSettingsCard() {
               >
                 {t("settings.account.verifyCode")}
               </Button>
-              <Button type="button" variant="ghost" disabled={isSubmittingEmail} onClick={cancelEmailChange}>
+              <Button type="button" variant="ghost" disabled={isSubmittingEmail} onClick={() => void cancelEmailChange()}>
                 {t("common.cancel")}
               </Button>
             </form>
