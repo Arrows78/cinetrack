@@ -514,7 +514,7 @@ describe("SettingsPage — preferences", () => {
     renderPage();
     await screen.findByText("Default profile");
 
-    screen.getByRole("button", { name: "Desktop notifications" }).click();
+    screen.getByRole("button", { name: "System notifications" }).click();
 
     await waitFor(() => expect(requestPermissionMock).toHaveBeenCalled());
     await waitFor(() => expect(updatePreferenceMock).toHaveBeenCalledWith("desktopNotificationsEnabled", true));
@@ -525,7 +525,7 @@ describe("SettingsPage — preferences", () => {
     renderPage();
     await screen.findByText("Default profile");
 
-    screen.getByRole("button", { name: "Desktop notifications" }).click();
+    screen.getByRole("button", { name: "System notifications" }).click();
 
     await waitFor(() => expect(requestPermissionMock).toHaveBeenCalled());
     expect(updatePreferenceMock).not.toHaveBeenCalledWith(
@@ -538,7 +538,7 @@ describe("SettingsPage — preferences", () => {
     renderPage();
     await screen.findByText("Default profile");
 
-    screen.getByRole("button", { name: "Desktop notifications" }).click();
+    screen.getByRole("button", { name: "System notifications" }).click();
 
     await waitFor(() =>
       expect(toastMock).toHaveBeenCalledWith({
@@ -553,7 +553,7 @@ describe("SettingsPage — preferences", () => {
     renderPage();
     await screen.findByText("Default profile");
 
-    screen.getByRole("button", { name: "Desktop notifications" }).click();
+    screen.getByRole("button", { name: "System notifications" }).click();
 
     await waitFor(() =>
       expect(toastMock).toHaveBeenCalledWith({
