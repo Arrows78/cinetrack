@@ -87,4 +87,3 @@ export function startPeriodicChecks(intervalMs: number): () => void {
     document.removeEventListener("visibilitychange", onVisibilityChange);
   };
 }
-
