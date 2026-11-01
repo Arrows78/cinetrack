@@ -92,7 +92,7 @@ export const desktopService = {
       } catch (error) {
         logger.warn(`Global shortcut unavailable: ${errorMessage(error)}`);
       }
-      }
+    }
     try {
       cleanups.push(
         await onOpenUrl((urls) => {
@@ -109,7 +109,7 @@ export const desktopService = {
       } catch (error) {
         logger.warn(`Tray navigation unavailable: ${errorMessage(error)}`);
       }
-      }
+    }
     try {
       cleanups.push(
         await listen<string>("cinetrack:deep-link", (event) => {
