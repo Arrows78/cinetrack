@@ -5,6 +5,7 @@ import type { PropsWithChildren } from "react";
 
 import i18n from "@/i18n";
 import { DesignSystemPage } from "../design-system-page";
+import { componentInventory } from "../design-system/catalog-data";
 import type * as LibraryRepositoryModule from "@/features/library/library-repository";
 import type * as ProgressRepositoryModule from "@/features/progress/progress-repository";
 
@@ -79,16 +80,21 @@ describe("DesignSystemPage", () => {
     );
 
     expect(screen.getByRole("heading", { level: 1, name: "Design system" })).toBeInTheDocument();
-    expect(screen.getByText("141 components shown")).toBeInTheDocument();
+    // From the inventory itself, so adding a component doesn't mean editing a count here.
+    expect(screen.getByText(`${componentInventory.length} components shown`)).toBeInTheDocument();
 
     fireEvent.change(screen.getByLabelText("Component group"), { target: { value: "UI primitives" } });
-    expect(screen.getByText("27 components shown")).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        `${componentInventory.filter((entry) => entry.group === "UI primitives").length} components shown`
+      )
+    ).toBeInTheDocument();
 
     fireEvent.change(screen.getByLabelText("Search the catalog"), { target: { value: "missing-component" } });
     expect(screen.getByText("No component found")).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "Reset filters" }));
-    expect(screen.getByText("141 components shown")).toBeInTheDocument();
+    expect(screen.getByText(`${componentInventory.length} components shown`)).toBeInTheDocument();
 
     const patternSearch = screen.getByPlaceholderText("Search titles, people or genres");
     fireEvent.change(patternSearch, { target: { value: "Arrival" } });
