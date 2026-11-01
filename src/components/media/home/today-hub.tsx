@@ -163,11 +163,11 @@ export function TodayHub({ index, id }: { index: number; id?: string }) {
     <section id={id} className="scroll-mt-28">
       <SectionHeader title={t("home.todayHubTitle")} subtitle={t("home.todayHubSubtitle")} index={index} />
       <Panel tone="highlight" className="space-y-8">
+        <NewEpisodesSection entries={episodes.newEpisodes.slice(0, CARD_ROW_LIMIT)} />
         {episodes.continueWatching.length > 0 ? (
           <WatchNextSection entries={episodes.continueWatching.slice(0, CARD_ROW_LIMIT)} index={0} size="sub" />
         ) : null}
         <UpNextSection entries={episodes.upNext.slice(0, CARD_ROW_LIMIT)} />
-        <NewEpisodesSection entries={episodes.newEpisodes.slice(0, CARD_ROW_LIMIT)} />
         <AvailableNowSection statuses={availability.availableNow.slice(0, CARD_ROW_LIMIT)} />
         <AlertsSection statuses={availability.pending.slice(0, CARD_ROW_LIMIT)} />
         <WatchTonightTeaserSection items={teaserItems} />
