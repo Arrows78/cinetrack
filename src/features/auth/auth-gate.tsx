@@ -17,7 +17,7 @@ export function AuthGate({ children }: PropsWithChildren) {
 
   if (!configured) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-background p-6 text-foreground">
+      <div className="flex min-h-dvh items-center justify-center bg-background p-6 text-foreground">
         <div className="surface max-w-xl rounded-shell p-8">
           <Settings2 className="h-10 w-10 text-primary" />
           <h1 className="mt-5 text-heading-lg font-bold">{t("auth.gate.needsConfiguration")}</h1>
