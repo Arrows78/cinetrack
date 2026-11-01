@@ -229,6 +229,17 @@ describe("BackupTools", () => {
       expect(loggerWarnMock).not.toHaveBeenCalled();
     });
 
+    it("reports a share-sheet failure other than a dismissal as an export failure", async () => {
+      isMobileAppMock.mockReturnValue(true);
+      shareFileMock.mockRejectedValueOnce(new Error("no share target"));
+      renderBackupTools();
+
+      screen.getByRole("button", { name: "Export" }).click();
+
+      await waitFor(() => expect(toastMock).toHaveBeenCalledWith(expect.objectContaining({ variant: "error" })));
+      expect(loggerWarnMock).toHaveBeenCalledWith(expect.stringContaining("no share target"));
+    });
+
     it("disables the export button while the export is in flight", async () => {
       let resolveExport!: (value: typeof SAMPLE_BACKUP) => void;
       exportMock.mockImplementationOnce(

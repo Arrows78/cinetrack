@@ -62,6 +62,13 @@ vi.mock("@/features/desktop/diagnostics-service", () => ({
   diagnosticsService: { exportSummary: (...args: unknown[]) => exportSummaryMock(...args) },
 }));
 
+const exportSupportReportMock = vi.fn();
+vi.mock("@/features/desktop/support-report", () => ({
+  buildSupportReport: vi.fn(),
+  redactDiagnosticLine: (line: string) => line,
+  exportSupportReport: (...args: unknown[]) => exportSupportReportMock(...args),
+}));
+
 const disableMock = vi.fn();
 const enableMock = vi.fn();
 const isEnabledMock = vi.fn();
@@ -522,6 +529,39 @@ describe("DesktopSettings", () => {
       await waitFor(() =>
         expect(toastMock).toHaveBeenCalledWith({ description: "Version 1.2.3 installed.", variant: "success" })
       );
+    });
+  });
+
+  describe("support report", () => {
+    it("confirms an exported report, and stays quiet when the user cancels the save", async () => {
+      exportSupportReportMock.mockResolvedValueOnce(true).mockResolvedValueOnce(false);
+      render(<DesktopSettings />);
+
+      screen.getByRole("button", { name: "Export support report" }).click();
+      await waitFor(() =>
+        expect(toastMock).toHaveBeenCalledWith({ description: "Support report exported.", variant: "success" })
+      );
+
+      toastMock.mockClear();
+      screen.getByRole("button", { name: "Export support report" }).click();
+      await waitFor(() => expect(exportSupportReportMock).toHaveBeenCalledTimes(2));
+      await waitFor(() => expect(screen.getByRole("button", { name: "Export support report" })).toBeEnabled());
+      expect(toastMock).not.toHaveBeenCalled();
+    });
+
+    it("logs a failed export and shows a translated error", async () => {
+      exportSupportReportMock.mockRejectedValueOnce(new Error("disk full"));
+      render(<DesktopSettings />);
+
+      screen.getByRole("button", { name: "Export support report" }).click();
+
+      await waitFor(() =>
+        expect(toastMock).toHaveBeenCalledWith({
+          description: "Couldn't export the support report. Try again.",
+          variant: "error",
+        })
+      );
+      expect(loggerWarnMock).toHaveBeenCalledWith(expect.stringContaining("disk full"));
     });
   });
 

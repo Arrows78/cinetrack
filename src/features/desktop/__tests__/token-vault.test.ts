@@ -172,6 +172,14 @@ describe("tokenVault", () => {
       expect(tokenVault.getSnapshot()).toEqual({ unlocked: true, configured: true, source: "vault" });
     });
 
+    it("unlock() also decodes a token the vault hands back as a Uint8Array", async () => {
+      storeGet.mockResolvedValue(Uint8Array.from(new TextEncoder().encode("vault-token")));
+      const { tokenVault } = await importFresh();
+
+      expect(await tokenVault.unlock("hunter2")).toBe(true);
+      expect(tokenVault.getToken()).toBe("vault-token");
+    });
+
     it("unlock() reports failure when the vault has no stored token", async () => {
       storeGet.mockResolvedValue(undefined);
       const { tokenVault } = await importFresh();

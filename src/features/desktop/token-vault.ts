@@ -85,11 +85,8 @@ export const tokenVault = {
       // Browser preview has no native secret store. Keep the token only in
       // this module's memory instead of persisting a bearer token in
       // localStorage where any injected script could read it.
-      setSnapshot({
-        unlocked: Boolean(token),
-        configured: Boolean(token),
-        source: token ? "browser" : null,
-      });
+      // No token yet (the early return above covers the other case).
+      setSnapshot({ unlocked: false, configured: false, source: null });
     }
   },
 
