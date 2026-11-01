@@ -1226,6 +1226,14 @@ export const componentInventory = [
     "Total rewatches, rewatch share, comfort titles and rewatch activity over time."
   ),
   component(
+    "PeopleStatsSection",
+    "components/stats/people-stats-section.tsx",
+    "Stats",
+    "pattern",
+    "live",
+    "Ranked directors and actors who recur across the user's completed titles, linked to their person pages."
+  ),
+  component(
     "RatingDistributionSection",
     "components/stats/rating-distribution-section.tsx",
     "Stats",
