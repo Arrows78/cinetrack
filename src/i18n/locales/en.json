@@ -413,7 +413,7 @@
     "reminderHoursBefore_other": "{{count}} hours before",
     "reminderLeadTimeDescription": "Reminders for titles you follow are checked when you open the app and during automatic checks.",
     "availabilityAlerts": "Availability alerts",
-    "desktopNotifications": "Desktop notifications",
+    "desktopNotifications": "System notifications",
     "notificationsPermissionDenied": "Notifications are blocked for CineTrack. Allow them in your system settings, then try again.",
     "notificationsToggleFailed": "Couldn't ask for the notification permission. Please try again.",
     "onThisDay": "\"On this day\" memories",
