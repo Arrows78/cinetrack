@@ -30,7 +30,7 @@ If a set of names — table names, routes, query keys — needs to be enumerated
 
 Anything that can't be undone — delete, restore, undo-an-import — routes through `ConfirmDialog` (`src/components/ui/confirm-dialog.tsx`). No exceptions, even when the action feels minor or is itself an "undo" of something else.
 
-- **Counter-example found:** "Undo last import" in `src/components/settings/backup-tools.tsx` fired directly on click, with no confirmation, unlike "Import" right next to it.
+- **Counter-example found:** "Undo last import" in `src/components/settings/backup-tools.tsx` fired directly on click, with no confirmation, unlike "Import" right next to it. Fixed: it now goes through `ConfirmDialog` too.
 - **Rule:** if an action can't be reversed by clicking the same button again, it needs `ConfirmDialog` first.
 
 ### Error handling
