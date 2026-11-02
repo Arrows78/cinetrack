@@ -22,11 +22,11 @@ importers:
         specifier: 0.3.1
         version: 0.3.1
       '@clerk/clerk-js':
-        specifier: ^6.40.0
-        version: 6.40.0(@types/react@19.3.0)(bufferutil@4.1.0)(immer@11.1.17)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(typescript@6.0.3)(use-sync-external-store@1.7.0(react@19.3.1))(utf-8-validate@6.0.6)(zod@4.6.7)
+        specifier: ^6.42.0
+        version: 6.42.0(@types/react@19.3.0)(bufferutil@4.1.0)(immer@11.1.17)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(typescript@6.0.3)(use-sync-external-store@1.7.0(react@19.3.1))(utf-8-validate@6.0.6)(zod@4.6.7)
       '@clerk/react':
-        specifier: ^6.18.0
-        version: 6.18.0(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
+        specifier: ^6.18.3
+        version: 6.18.3(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
       '@fontsource-variable/dm-sans':
         specifier: ^5.3.0
         version: 5.3.0
@@ -61,17 +61,17 @@ importers:
         specifier: ^2.118.0
         version: 2.118.0
       '@tanstack/query-sync-storage-persister':
-        specifier: ^5.104.5
-        version: 5.104.5
+        specifier: ^5.105.0
+        version: 5.105.0
       '@tanstack/react-query':
-        specifier: ^5.104.5
-        version: 5.104.5(@types/react@19.3.0)(react@19.3.1)
+        specifier: ^5.105.0
+        version: 5.105.0(@types/react@19.3.0)(react@19.3.1)
       '@tanstack/react-query-devtools':
-        specifier: ^5.104.5
-        version: 5.104.5(@tanstack/react-query@5.104.5(@types/react@19.3.0)(react@19.3.1))(@types/react@19.3.0)(csstype@3.2.3)(react@19.3.1)
+        specifier: ^5.105.0
+        version: 5.105.0(@tanstack/react-query@5.105.0(@types/react@19.3.0)(react@19.3.1))(@types/react@19.3.0)(csstype@3.2.3)(react@19.3.1)
       '@tanstack/react-query-persist-client':
-        specifier: ^5.104.5
-        version: 5.104.5(@tanstack/react-query@5.104.5(@types/react@19.3.0)(react@19.3.1))(@types/react@19.3.0)(react@19.3.1)
+        specifier: ^5.105.0
+        version: 5.105.0(@tanstack/react-query@5.105.0(@types/react@19.3.0)(react@19.3.1))(@types/react@19.3.0)(react@19.3.1)
       '@tanstack/react-router':
         specifier: ^1.170.46
         version: 1.170.46(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
@@ -82,11 +82,11 @@ importers:
         specifier: ^2.7.0
         version: 2.7.0
       '@tauri-apps/plugin-deep-link':
-        specifier: ^2.6.2
-        version: 2.6.2
+        specifier: ^2.6.3
+        version: 2.6.3
       '@tauri-apps/plugin-dialog':
-        specifier: ^2.8.3
-        version: 2.8.3
+        specifier: ^2.8.4
+        version: 2.8.4
       '@tauri-apps/plugin-fs':
         specifier: ^2.7.1
         version: 2.7.1
@@ -97,8 +97,8 @@ importers:
         specifier: ^2.8.3
         version: 2.8.3
       '@tauri-apps/plugin-notification':
-        specifier: ^2.7.0
-        version: 2.7.0
+        specifier: ^2.8.0
+        version: 2.8.0
       '@tauri-apps/plugin-opener':
         specifier: ^2.7.2
         version: 2.7.2
@@ -130,14 +130,14 @@ importers:
         specifier: ^0.8.3
         version: 0.8.3
       framer-motion:
-        specifier: ^14.6.0
-        version: 14.6.0(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
+        specifier: ^14.8.0
+        version: 14.8.0(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
       i18next:
-        specifier: ^26.5.6
-        version: 26.5.6(typescript@6.0.3)
+        specifier: ^26.5.11
+        version: 26.5.11(typescript@6.0.3)
       lucide-react:
-        specifier: ^1.61.0
-        version: 1.61.0(@types/react@19.3.0)(react@19.3.1)
+        specifier: ^1.64.0
+        version: 1.64.0(@types/react@19.3.0)(react@19.3.1)
       react:
         specifier: ^19.3.1
         version: 19.3.1
@@ -145,11 +145,11 @@ importers:
         specifier: ^19.3.1
         version: 19.3.1(react@19.3.1)
       react-i18next:
-        specifier: ^17.1.3
-        version: 17.1.3(i18next@26.5.6(typescript@6.0.3))(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(typescript@6.0.3)
+        specifier: ^17.1.9
+        version: 17.1.9(i18next@26.5.11(typescript@6.0.3))(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(typescript@6.0.3)
       react-virtuoso:
-        specifier: ^4.18.19
-        version: 4.18.19(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
+        specifier: ^4.18.20
+        version: 4.18.20(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
       recharts:
         specifier: ^3.10.1
         version: 3.10.1(@types/react@19.3.0)(react-dom@19.3.1(react@19.3.1))(react-is@19.3.1)(react@19.3.1)(redux@5.0.1)
@@ -381,19 +381,19 @@ packages:
   '@choochmeque/tauri-plugin-sharekit-api@0.3.1':
     resolution: {integrity: sha512-Cdd1wPW9Arang3sapz1LXDdklY06wnaf+zqsT+iS1c64cyozjhKYwAzLdirJY0HtlPlaZ7G5PsCfqgLoXkpqlg==}
 
-  '@clerk/clerk-js@6.40.0':
-    resolution: {integrity: sha512-2MnZ/ygvuCmeuqfXQmsxfQaLN/SSJvQbtT2cLXbgr5VKr3KmZFZBVvX977fG3eZ6pprl4J9pO+I2bbe6BvColg==}
+  '@clerk/clerk-js@6.42.0':
+    resolution: {integrity: sha512-4b7kBnxJVs3MtsFntUzF7lFZGlde1Xg2S8aSrJpt0bFaAy0/1aKhdXVXu98eoQakrxVWtGl/9VHwXtzYBfG+4g==}
     engines: {node: '>=20.9.0'}
 
-  '@clerk/react@6.18.0':
-    resolution: {integrity: sha512-MmLhXGtrGByt0ZJjLyh88rP7uESxONji4FFVFKe7U11DIGRVdvgRs/mWfLsNa1R23knxeTw3HMEVLIjQ6v5DgQ==}
+  '@clerk/react@6.18.3':
+    resolution: {integrity: sha512-WuKtyxT3zEKuEBfmzmK2DnEXw65r0meRd4//wTmhXrPwKgEHZmtBtaIFK8CAybxCM4wl4QsoCOEXXEk1ngo+yw==}
     engines: {node: '>=20.9.0'}
     peerDependencies:
       react: ^18.0.0 || ~19.0.3 || ~19.1.4 || ~19.2.3 || ~19.3.0-0
       react-dom: ^18.0.0 || ~19.0.3 || ~19.1.4 || ~19.2.3 || ~19.3.0-0
 
-  '@clerk/shared@4.41.1':
-    resolution: {integrity: sha512-qxy8bzGMV6EGuKqnfEVm/+f9yGncUyOJhxdbM10X52PoMiALJ5VOH+c3C427ETkupYalF81eBlg7aBH50AtbNA==}
+  '@clerk/shared@4.43.1':
+    resolution: {integrity: sha512-0oyDzyEMZzU3tmvEVb4dts9ix5XqXBiNlCn9SWA8y/RNi8TtSHT5bPh/zn6HaA6fkdhJONjD6XVZIq7hkIdkyQ==}
     engines: {node: '>=20.9.0'}
     peerDependencies:
       react: ^18.0.0 || ~19.0.3 || ~19.1.4 || ~19.2.3 || ~19.3.0-0
@@ -1404,40 +1404,43 @@ packages:
     resolution: {integrity: sha512-DIpUSOhPfQ7u/qfUi/Wgm0wBO56MyBYXGvnlI0NcauDRPqdBUlAZZjW2Dxm92m+k1UWVhKw8YJ4f47+75Aujyw==}
     engines: {node: '>=20'}
 
-  '@tanstack/query-core@5.104.5':
-    resolution: {integrity: sha512-Q94gI8Opd+CbdVNOdj8ZCyV8WqLYitrDq1t96Xc8WZT6lY0r5iRnJLXYDxMex7EEf2v+mXvn4FcjaBKSxXZQ9A==}
+  '@tanstack/query-core@5.105.0':
+    resolution: {integrity: sha512-7p56vRmT/z4UJ6sctGIdl5WRUQyUv53IUpUwEKi2g97zMbO7zh8ZsCLffGAvCPBR4xD72e3VXsDyLwXHhoNTMQ==}
 
-  '@tanstack/query-devtools@5.104.5':
-    resolution: {integrity: sha512-BLVEw4lFF7aIRsfqGvI50SSR9oN46/EmlygC+3h5TUdI+fL8GnMQialL3H92TbYi7J1b/hYlUGnckBT2uG5h8w==}
+  '@tanstack/query-core@5.105.1':
+    resolution: {integrity: sha512-B/rNlZoZ54w1dlddiUt9oEe1SLM+37c00SKLJEg9YH+7as3Y54P81o9Fh+2ujZ36tXPnQJ5oVe7AcyEWkyFhPg==}
 
-  '@tanstack/query-persist-client-core@5.104.5':
-    resolution: {integrity: sha512-z0+AuCPPf53bl1nntO9i8ZXGvSdO7nGRZFtcpM2DCZKz88UBzHpJZZJpuUkLFkDU7xYHnUOMrOJmky+Et1nRLg==}
+  '@tanstack/query-devtools@5.105.0':
+    resolution: {integrity: sha512-vRJf9XRHB+P2aMSAEHWtMLsAf1nC9NSsHVqSHiT/FZYU/+5LEo2BOrXKskURQnJEzg6whaBeP6iMn0PS30KJrQ==}
 
-  '@tanstack/query-sync-storage-persister@5.104.5':
-    resolution: {integrity: sha512-Tj/Uc2eRaJaUSMu1PG+K3V1lJ9DCeK2goNtGU/vw+plzqYsVzwz3RoZlbeXNLWzKXE1lzC2Y5tjMFoyKpIu9iA==}
+  '@tanstack/query-persist-client-core@5.105.0':
+    resolution: {integrity: sha512-bOy2lMzzEyacL6s9hIa0tKmaIr/TM24HZaK9a20ctZjPYlCs6NhGdgbxi20RcdJWZwWunkLqPDnxfClD7QIyKg==}
 
-  '@tanstack/react-query-devtools@5.104.5':
-    resolution: {integrity: sha512-2SMhSSYnOGSaPLuSTKLOj5nPoP4sqasOfkpTn5BLe6LIZuHzrpcqrJx0Rm8uUSN5Ob4lPAbh/1oWClnnGaR7Bg==}
+  '@tanstack/query-sync-storage-persister@5.105.0':
+    resolution: {integrity: sha512-8Rq31cmUnLlxj/MTpw/nGw3gkCQwRZhl1fh0VQa4NNTzYX4emg56TyTZSCet62RkcFWJkfkfGlgHMbazp/U8SQ==}
+
+  '@tanstack/react-query-devtools@5.105.0':
+    resolution: {integrity: sha512-FfRQxvqngBYqTLsuAB+qaj0Ef3KkUpknuRoyUjcl8OCZhwPocTHEvhMPAoBmk1FtO6nXUIVCC7F9A2AHH01SLQ==}
     peerDependencies:
-      '@tanstack/react-query': ^5.104.5
+      '@tanstack/react-query': ^5.105.0
       '@types/react': ^18 || ^19
       react: ^18 || ^19
     peerDependenciesMeta:
       '@types/react':
         optional: true
 
-  '@tanstack/react-query-persist-client@5.104.5':
-    resolution: {integrity: sha512-nXtb9e3smFl5xzGuttzck5VjwA18ZolPLj1ybt2zjEJudIUh/gRFxeNY0855YFp/+N0V1s/lpWLSrO89iQ5IcQ==}
+  '@tanstack/react-query-persist-client@5.105.0':
+    resolution: {integrity: sha512-88XnwRDyGnlEGgnX2ePbUnEwGoQpQufLKR5bqCfs8CQbNoS2km3Ib/MNKWwrRTQDOdmJYhl6wBPJEdUBBMH5XA==}
     peerDependencies:
-      '@tanstack/react-query': ^5.104.5
+      '@tanstack/react-query': ^5.105.0
       '@types/react': ^18 || ^19
       react: ^18 || ^19
     peerDependenciesMeta:
       '@types/react':
         optional: true
 
-  '@tanstack/react-query@5.104.5':
-    resolution: {integrity: sha512-RORgFe052U+93weaNuqg7qHq7vNVNzXN/VrXqD4bbAuQCWUqOl2lV5Ui9flWk5CVvMyL/Bh27QWhzwH0aaOx9g==}
+  '@tanstack/react-query@5.105.0':
+    resolution: {integrity: sha512-y+hMuDERvgg6ay1da0V1a6ZC0ZONt7dELxSFkqRZuwm7p1TTZs0MoXrPlBRflIpRoYjvzQVYxycnLImpFLhWrw==}
     peerDependencies:
       '@types/react': ^18 || ^19
       react: ^18 || ^19
@@ -1542,11 +1545,11 @@ packages:
   '@tauri-apps/plugin-autostart@2.7.0':
     resolution: {integrity: sha512-4uRq+rqKSAh6MWAxgk6FnUPigc8VMG8eDVYTLk3A7OfKs9sLVwfeM8kbUvzjpabRQvyl4zd9tfzXBTrrtuprsA==}
 
-  '@tauri-apps/plugin-deep-link@2.6.2':
-    resolution: {integrity: sha512-uMsF1VQt1OdYq3jDGsSBlBdtbTp6o7WYFYFnjiNuLfFpBvZsdH0XnolJoSzBOlTzhroROBUys/j1y1PQqdiMZA==}
+  '@tauri-apps/plugin-deep-link@2.6.3':
+    resolution: {integrity: sha512-L+fjyGe5RPBtfh3VUSl1HslC0/xW7frDvdsZk37d9UdqOpKwD9P0PmblSk7Q/WCiAEHZ9J9Pn7VyiecBBdiy/A==}
 
-  '@tauri-apps/plugin-dialog@2.8.3':
-    resolution: {integrity: sha512-Hd/yBfk2R5v2MFrz/0VArSXeh8xKLLXGunqSiTtcHKn1zNZwaKujuA0VSwUvNfwC4hDoF1PveS+gBDNe3nHspw==}
+  '@tauri-apps/plugin-dialog@2.8.4':
+    resolution: {integrity: sha512-+6ZOiXenOaxXwb8qCbBPdT2jX2cFPaVVHGIskrpmJLpmWj+qKRTD6X/z9x7hTdSQn7NedcoXCkWGej4a7dC4lw==}
 
   '@tauri-apps/plugin-fs@2.7.1':
     resolution: {integrity: sha512-4TBVjpi/q8PuNzjpkAc2iBGXMTLjOrAyfTiiOL8ORaJCZJRG3tjzmQ4sqs2CMG75FvLyRkOkERfP7AyY4iBNwQ==}
@@ -1557,8 +1560,8 @@ packages:
   '@tauri-apps/plugin-http@2.8.3':
     resolution: {integrity: sha512-MrgCnnxSnzxkMX+Tk1XXB8rSI9hfhUHQmtbn0EpflEDcSx04K1BDfrv51tcK27SCuU/B1j8sNHL0UZur/1iqKA==}
 
-  '@tauri-apps/plugin-notification@2.7.0':
-    resolution: {integrity: sha512-kgdHCPSY/3GIi4gSWuLfd3y555U0kwzP0PmnUjT+sGhgO7RdAM6goFjDqayRaKC8yA5oEYi7w2NnA3oQxIjldw==}
+  '@tauri-apps/plugin-notification@2.8.0':
+    resolution: {integrity: sha512-BB9Kk2emiNHyMjIQr3k/ye8RKD2RJeOPCjM5OZLF+4/pO6Kfjl9RtkX4hVCe1vqgbAx5HjHXjf0O8rtdW2F2dw==}
 
   '@tauri-apps/plugin-opener@2.7.2':
     resolution: {integrity: sha512-LyybP1VSzTMQiaFYcsbAse47KpivlyXdLZMQzGLEnkgQacGESnpjAfFoQ6h5sqWgAdZDH9szYjPzHMpv0Sz+TQ==}
@@ -2554,15 +2557,18 @@ packages:
     resolution: {integrity: sha512-dKx12eRCVIzqCxFGplyFKJMPvLEWgmNtUrpTiJIR5u97zEhRG8ySrtboPHZXx7daLxQVrl643cTzbab2tkQjxg==}
     engines: {node: '>= 0.4'}
 
-  framer-motion@14.6.0:
-    resolution: {integrity: sha512-MzBgZxGgoHPfSLEXmo4o5XlZvb+nVRFdHtGjVhm6LMIEJKTt/8hNO023euL5mYyzc8llV/hQTfjnN68tNRHalw==}
+  framer-motion@14.8.0:
+    resolution: {integrity: sha512-PQsSx+UlaKiyPhADjVT5wALBErJJdbMeKQS4gQx6ibOrSNni7qjqfTKMvf6YHGG8pQWi6njs7AqrIG7R2hbnxA==}
     peerDependencies:
       react: ^18.0.0 || ^19.0.0
       react-dom: ^18.0.0 || ^19.0.0
+      remix: ^3.1.0
     peerDependenciesMeta:
       react:
         optional: true
       react-dom:
+        optional: true
+      remix:
         optional: true
 
   fsevents@2.3.3:
@@ -2689,8 +2695,8 @@ packages:
   html-parse-stringify@4.0.1:
     resolution: {integrity: sha512-0zHsZJrK7S3K2aucXWL6ycoYJ/iNtIcFHC/nYQgFklPtrv5LpJctIiSCroWZWeuoXvuyFdzp6KzjJQ+OT5MfFw==}
 
-  i18next@26.5.6:
-    resolution: {integrity: sha512-GFWrDwGmYhOQS3bKvjA2Ir2ob9ScEdyY1UbeQJ10jyVACGQ6XxmDYqC/lxEj/IPEJlPQYNRnYffDET6TM8mnFg==}
+  i18next@26.5.11:
+    resolution: {integrity: sha512-Wc0klBPKxqZ2tL2qdAnF8xvvnWgr1IMGSY2ikTiAvaFVbz7xiFARtkoU4RidBDw1SyziGROp0qxu6qnJ7l2Wug==}
     peerDependencies:
       typescript: ^5 || ^6 || ^7
     peerDependenciesMeta:
@@ -3105,8 +3111,8 @@ packages:
   lru-cache@5.1.1:
     resolution: {integrity: sha512-KpNARQA3Iwv+jTA0utUVVbrh+Jlrr1Fv0e56GGzAFOXN7dk/FviaDW8LHmK52DlcH4WP2n6gI8vN1aesBFgo9w==}
 
-  lucide-react@1.61.0:
-    resolution: {integrity: sha512-v2SQPPPNjnr+BlhL9Spuzmo5yR+hLkftfuE4E3jaxdNPgSH0hJKPcLJBP7yAta87jQNPsSERS59PJjCJ/CorBA==}
+  lucide-react@1.64.0:
+    resolution: {integrity: sha512-v626F/bcLNvFom6vzztHILtG9tUgXXbgA5AGkd82YkV401+Ko/NHyrWafbPwGofa+6p/EgDJcvEkIwsMH9098w==}
     peerDependencies:
       '@types/react': '*'
       react: ^16.5.1 || ^17.0.0 || ^18.0.0 || ^19.0.0
@@ -3152,11 +3158,11 @@ packages:
   minimist@1.2.8:
     resolution: {integrity: sha512-2yyAR8qBkN3YuheJanUpWC5U3bb5osDywNB8RzDVlDwDHbocAJveqqj1u8+SVD7jkWT4yvsHCpWqqWqAxb0zCA==}
 
-  motion-dom@14.6.0:
-    resolution: {integrity: sha512-lIojTl9aYSPIkeOOSzBliy1nNvpdO3JtVzW2WgTXQlOP4ZMuJhtWO3fP7OD4TVFwlRucdvxlDSMkL+fEQnQ52A==}
+  motion-dom@14.8.0:
+    resolution: {integrity: sha512-HzA41kvV7BgluM7L/XbW+gHFzDtJUbHnEsrlnIzPS9dqSfoPy9YzL6VKF7ai0TiQcykkkLUqvIxECAdwa9gwAw==}
 
-  motion-utils@14.6.0:
-    resolution: {integrity: sha512-bZJo2AmQ2aOFkaato6VXrTbkPG0XhMzivWUWSaI59pxyllj8QMQUFZ84MYRQnPkK+7dr4KldyJwF2+RM0sdq/w==}
+  motion-utils@14.7.0:
+    resolution: {integrity: sha512-woO0/Nb7ys75f94fjvQi/6leiHGvZUYkeHUPEZ3vxsV+9OpEVhkxp01x8MlRwX0zt31EqgXsKDAoBoJLC148Tw==}
 
   ms@2.1.3:
     resolution: {integrity: sha512-6FlzubTLZG3J2a/NVCAleEhjzq5oxgHyaCU9yYXvcLsvoVaHJq/s5xXI6/XXP6tz7R9xAOtHnSO/tXtF3WRTlA==}
@@ -3217,8 +3223,8 @@ packages:
     resolution: {integrity: sha512-19YVAg7T+WTrxggPukVq7DjTv6+PJ867TmhCvBsYwmbFCsZd344rq2Ld1p0wo8f8Qrrhgp82c6FJRqdXWtSEhg==}
     engines: {node: '>= 0.4'}
 
-  ox@0.14.57:
-    resolution: {integrity: sha512-CPF6aEFyAuqgL0x7VaFM0vI2/CUd5Qk8+BIL6OnViPw+gF07O/VAhqEPOPw5GYnYPwomIk8mD91gTcQ1RAtupA==}
+  ox@0.14.59:
+    resolution: {integrity: sha512-Y+DPEQScTEGKteQATjtytE1JRQ5cg1R2+DvYQ/lbhUCm/xS9n0Jnkkf2AqQyIntefQxs8xY6dZ+kyNZ7zf2FzA==}
     peerDependencies:
       typescript: '>=5.4.0'
     peerDependenciesMeta:
@@ -3329,8 +3335,8 @@ packages:
     peerDependencies:
       react: ^19.3.1
 
-  react-i18next@17.1.3:
-    resolution: {integrity: sha512-XfaTqU09NPuBDuADQ8TEPbE0Goc2Gh6FHu0qvdFWfOWCdGQWRxRY2Uo5tDPtGBdzu4COXp0LQCkQIYa0IhJXlA==}
+  react-i18next@17.1.9:
+    resolution: {integrity: sha512-OgYqIH13XHPlWTaaI795Dz+k2AdKnXcOxNQVnf750T8Ij0TYWp1nYvXRpoJBulPqlyk2OAbn1PM4tFKiIj/byA==}
     peerDependencies:
       i18next: '>= 26.2.0'
       react: '>= 16.8.0'
@@ -3396,8 +3402,8 @@ packages:
       '@types/react':
         optional: true
 
-  react-virtuoso@4.18.19:
-    resolution: {integrity: sha512-dewyZisA5IiQTldh7eHM5KpI+qxi0nKRVYi2iM01XmPkNa5tjvVUKJKAIc6ted1hAK1/NFlXuhXpVYqGHHdcdQ==}
+  react-virtuoso@4.18.20:
+    resolution: {integrity: sha512-2G/Hdi/QHRtJtzSZOkAwJFdUzBmhNIQCAmw6gLGUZTGbjVL6+TOBIFJOCnpm6xgWGBfrrMiZV5rJNkQ9gEgAdQ==}
     peerDependencies:
       react: '>=16 || >=17 || >= 18 || >= 19'
       react-dom: '>=16 || >=17 || >= 18 || >=19'
@@ -3549,8 +3555,8 @@ packages:
     resolution: {integrity: sha512-g9Q1haeby36OSStwb4ntCGGGaKsaVSjQ68fBxoQcutl5fS1vuY18H3wSt3jFyFtrkx+Kz0V1G85A4MyAdDMi2Q==}
     engines: {node: '>=8'}
 
-  solid-js@1.9.17:
-    resolution: {integrity: sha512-4GAmLOWPfNV8H9Jfn2LSFTpNEG6jiOKPiwd5lnLGQtehHaX6l3TOLzJqQ7mqwB/3k1Yy3zyumFVopmc/tm34ow==}
+  solid-js@1.9.18:
+    resolution: {integrity: sha512-CHGO5YFk6Y9m/1YSxVtKnXfrW7JD3Tmof8HmR4z6TmCPsS8efo8LnzIR8CQh3cUvffqYm6DWyBFfk8dQw1CNQQ==}
 
   solid-presence@0.2.0:
     resolution: {integrity: sha512-YM92o+jvpzX3XGaD4rLYmq/Kc2ZVh47GSCLEufHBFQQIurvZTs8SoGJxO8BJGNDxBKdcS8F3dYhW1SDXp4BNjA==}
@@ -3688,6 +3694,9 @@ packages:
   tslib@2.8.1:
     resolution: {integrity: sha512-oJFu94HQb+KVduSUQL7wnpmqnfmLsOA/nAh6b6EH0wCEoK0/mPeXU6c3wKDV83MkOuHPRHtSXKKU99IBazS/2w==}
 
+  tslib@2.9.1:
+    resolution: {integrity: sha512-a4Ux9VKuIMHsOS7ENbEq6hK2ZGYIT27Rtl0E4eD9KqwxhKiQeMZE/9xb3IdYwWaSOyIBQLExhQgXDTYoiCxnWA==}
+
   type-check@0.4.0:
     resolution: {integrity: sha512-XleUoc9uwGXqjWwXaUTZAmzMcFZ5858QA2vvx1Ur5xIcixXIP+8LnFDgRplU30us6teqdlskFfu+ae4K79Ooew==}
     engines: {node: '>= 0.8.0'}
@@ -3785,8 +3794,8 @@ packages:
   victory-vendor@37.3.6:
     resolution: {integrity: sha512-SbPDPdDBYp+5MJHhBCAyI7wKM3d5ivekigc2Dk2s7pgbZ9wIgIBYGVw4zGHBml/qTFbexrofXW6Gu4noGxrOwQ==}
 
-  viem@2.57.11:
-    resolution: {integrity: sha512-kvcBGXzIGmZu3GqaA83ZOLzVC57YO7WCgQrGcUHNKqZ8Cjqc9vV//uGna4Nhv0NGHn2gekw1FNdSvQePNnYePQ==}
+  viem@2.57.14:
+    resolution: {integrity: sha512-ctaSyx3I24va98H2PYz8C30FKXXo8Th/H6Wrn7za7N+RuPQHiL09zFedX6GZDCtz73YFLrf7YeVOgU5CUVByng==}
     peerDependencies:
       typescript: '>=5.0.4'
     peerDependenciesMeta:
@@ -4139,7 +4148,7 @@ snapshots:
       idb-keyval: 6.2.1
       ox: 0.6.9(typescript@6.0.3)(zod@4.6.7)
       preact: 10.24.2
-      viem: 2.57.11(bufferutil@4.1.0)(typescript@6.0.3)(utf-8-validate@6.0.6)(zod@4.6.7)
+      viem: 2.57.14(bufferutil@4.1.0)(typescript@6.0.3)(utf-8-validate@6.0.6)(zod@4.6.7)
       zustand: 5.0.3(@types/react@19.3.0)(immer@11.1.17)(react@19.3.1)(use-sync-external-store@1.7.0(react@19.3.1))
     transitivePeerDependencies:
       - '@types/react'
@@ -4187,14 +4196,14 @@ snapshots:
     dependencies:
       '@tauri-apps/api': 2.12.4
 
-  '@clerk/clerk-js@6.40.0(@types/react@19.3.0)(bufferutil@4.1.0)(immer@11.1.17)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(typescript@6.0.3)(use-sync-external-store@1.7.0(react@19.3.1))(utf-8-validate@6.0.6)(zod@4.6.7)':
+  '@clerk/clerk-js@6.42.0(@types/react@19.3.0)(bufferutil@4.1.0)(immer@11.1.17)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(typescript@6.0.3)(use-sync-external-store@1.7.0(react@19.3.1))(utf-8-validate@6.0.6)(zod@4.6.7)':
     dependencies:
       '@base-org/account': 2.0.1(@types/react@19.3.0)(bufferutil@4.1.0)(immer@11.1.17)(react@19.3.1)(typescript@6.0.3)(use-sync-external-store@1.7.0(react@19.3.1))(utf-8-validate@6.0.6)(zod@4.6.7)
-      '@clerk/shared': 4.41.1(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
+      '@clerk/shared': 4.43.1(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
       '@coinbase/wallet-sdk': 4.3.7(bufferutil@4.1.0)(typescript@6.0.3)(utf-8-validate@6.0.6)(zod@4.6.7)
       '@stripe/stripe-js': 5.6.0
       '@swc/helpers': 0.5.21
-      '@tanstack/query-core': 5.104.5
+      '@tanstack/query-core': 5.105.1
       '@wallet-standard/core': 1.1.1
       '@zxcvbn-ts/core': 3.0.4
       '@zxcvbn-ts/language-common': 3.0.4
@@ -4215,16 +4224,16 @@ snapshots:
       - utf-8-validate
       - zod
 
-  '@clerk/react@6.18.0(react-dom@19.3.1(react@19.3.1))(react@19.3.1)':
+  '@clerk/react@6.18.3(react-dom@19.3.1(react@19.3.1))(react@19.3.1)':
     dependencies:
-      '@clerk/shared': 4.41.1(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
+      '@clerk/shared': 4.43.1(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
       react: 19.3.1
       react-dom: 19.3.1(react@19.3.1)
       tslib: 2.8.1
 
-  '@clerk/shared@4.41.1(react-dom@19.3.1(react@19.3.1))(react@19.3.1)':
+  '@clerk/shared@4.43.1(react-dom@19.3.1(react@19.3.1))(react@19.3.1)':
     dependencies:
-      '@tanstack/query-core': 5.104.5
+      '@tanstack/query-core': 5.105.1
       dequal: 2.0.3
       glob-to-regexp: 0.4.1
       js-cookie: 3.0.8
@@ -4238,7 +4247,7 @@ snapshots:
       clsx: 1.2.1
       eventemitter3: 5.0.4
       preact: 10.29.8
-      viem: 2.57.11(bufferutil@4.1.0)(typescript@6.0.3)(utf-8-validate@6.0.6)(zod@4.6.7)
+      viem: 2.57.14(bufferutil@4.1.0)(typescript@6.0.3)(utf-8-validate@6.0.6)(zod@4.6.7)
     transitivePeerDependencies:
       - bufferutil
       - preact-render-to-string
@@ -4246,10 +4255,10 @@ snapshots:
       - utf-8-validate
       - zod
 
-  '@corvu/utils@0.4.2(solid-js@1.9.17)':
+  '@corvu/utils@0.4.2(solid-js@1.9.18)':
     dependencies:
       '@floating-ui/dom': 1.8.0
-      solid-js: 1.9.17
+      solid-js: 1.9.18
 
   '@csstools/color-helpers@6.1.2': {}
 
@@ -4278,17 +4287,17 @@ snapshots:
   '@emnapi/core@1.10.0':
     dependencies:
       '@emnapi/wasi-threads': 1.2.1
-      tslib: 2.8.1
+      tslib: 2.9.1
     optional: true
 
   '@emnapi/runtime@1.10.0':
     dependencies:
-      tslib: 2.8.1
+      tslib: 2.9.1
     optional: true
 
   '@emnapi/wasi-threads@1.2.1':
     dependencies:
-      tslib: 2.8.1
+      tslib: 2.9.1
     optional: true
 
   '@eslint-community/eslint-utils@4.10.1(eslint@10.13.0(jiti@2.7.0))':
@@ -4442,27 +4451,27 @@ snapshots:
 
   '@keyv/serialize@1.1.1': {}
 
-  '@kobalte/core@0.13.14(solid-js@1.9.17)':
+  '@kobalte/core@0.13.14(solid-js@1.9.18)':
     dependencies:
       '@floating-ui/dom': 1.8.0
       '@internationalized/number': 3.6.9
-      '@kobalte/utils': 0.9.2(solid-js@1.9.17)
-      '@solid-primitives/props': 3.2.4(solid-js@1.9.17)
-      '@solid-primitives/resize-observer': 2.2.0(solid-js@1.9.17)
-      solid-js: 1.9.17
-      solid-presence: 0.2.0(solid-js@1.9.17)
-      solid-prevent-scroll: 0.1.11(solid-js@1.9.17)
+      '@kobalte/utils': 0.9.2(solid-js@1.9.18)
+      '@solid-primitives/props': 3.2.4(solid-js@1.9.18)
+      '@solid-primitives/resize-observer': 2.2.0(solid-js@1.9.18)
+      solid-js: 1.9.18
+      solid-presence: 0.2.0(solid-js@1.9.18)
+      solid-prevent-scroll: 0.1.11(solid-js@1.9.18)
 
-  '@kobalte/utils@0.9.2(solid-js@1.9.17)':
+  '@kobalte/utils@0.9.2(solid-js@1.9.18)':
     dependencies:
-      '@solid-primitives/event-listener': 2.4.6(solid-js@1.9.17)
-      '@solid-primitives/keyed': 1.5.3(solid-js@1.9.17)
-      '@solid-primitives/map': 0.4.13(solid-js@1.9.17)
-      '@solid-primitives/media': 2.3.6(solid-js@1.9.17)
-      '@solid-primitives/props': 3.2.4(solid-js@1.9.17)
-      '@solid-primitives/refs': 1.1.4(solid-js@1.9.17)
-      '@solid-primitives/utils': 6.4.1(solid-js@1.9.17)
-      solid-js: 1.9.17
+      '@solid-primitives/event-listener': 2.4.6(solid-js@1.9.18)
+      '@solid-primitives/keyed': 1.5.3(solid-js@1.9.18)
+      '@solid-primitives/map': 0.4.13(solid-js@1.9.18)
+      '@solid-primitives/media': 2.3.6(solid-js@1.9.18)
+      '@solid-primitives/props': 3.2.4(solid-js@1.9.18)
+      '@solid-primitives/refs': 1.1.4(solid-js@1.9.18)
+      '@solid-primitives/utils': 6.4.1(solid-js@1.9.18)
+      solid-js: 1.9.18
 
   '@napi-rs/wasm-runtime@1.2.3(@emnapi/core@1.10.0)(@emnapi/runtime@1.10.0)':
     dependencies:
@@ -4871,73 +4880,73 @@ snapshots:
 
   '@sinclair/typebox@0.34.52': {}
 
-  '@solid-primitives/event-listener@2.4.6(solid-js@1.9.17)':
+  '@solid-primitives/event-listener@2.4.6(solid-js@1.9.18)':
     dependencies:
-      '@solid-primitives/utils': 6.4.1(solid-js@1.9.17)
-      solid-js: 1.9.17
+      '@solid-primitives/utils': 6.4.1(solid-js@1.9.18)
+      solid-js: 1.9.18
 
-  '@solid-primitives/keyed@1.5.3(solid-js@1.9.17)':
+  '@solid-primitives/keyed@1.5.3(solid-js@1.9.18)':
     dependencies:
-      solid-js: 1.9.17
+      solid-js: 1.9.18
 
-  '@solid-primitives/map@0.4.13(solid-js@1.9.17)':
+  '@solid-primitives/map@0.4.13(solid-js@1.9.18)':
     dependencies:
-      '@solid-primitives/trigger': 1.2.4(solid-js@1.9.17)
-      solid-js: 1.9.17
+      '@solid-primitives/trigger': 1.2.4(solid-js@1.9.18)
+      solid-js: 1.9.18
 
-  '@solid-primitives/media@2.3.6(solid-js@1.9.17)':
+  '@solid-primitives/media@2.3.6(solid-js@1.9.18)':
     dependencies:
-      '@solid-primitives/event-listener': 2.4.6(solid-js@1.9.17)
-      '@solid-primitives/rootless': 1.5.4(solid-js@1.9.17)
-      '@solid-primitives/static-store': 0.1.4(solid-js@1.9.17)
-      '@solid-primitives/utils': 6.4.1(solid-js@1.9.17)
-      solid-js: 1.9.17
+      '@solid-primitives/event-listener': 2.4.6(solid-js@1.9.18)
+      '@solid-primitives/rootless': 1.5.4(solid-js@1.9.18)
+      '@solid-primitives/static-store': 0.1.4(solid-js@1.9.18)
+      '@solid-primitives/utils': 6.4.1(solid-js@1.9.18)
+      solid-js: 1.9.18
 
-  '@solid-primitives/props@3.2.4(solid-js@1.9.17)':
+  '@solid-primitives/props@3.2.4(solid-js@1.9.18)':
     dependencies:
-      '@solid-primitives/utils': 6.4.1(solid-js@1.9.17)
-      solid-js: 1.9.17
+      '@solid-primitives/utils': 6.4.1(solid-js@1.9.18)
+      solid-js: 1.9.18
 
-  '@solid-primitives/refs@1.1.4(solid-js@1.9.17)':
+  '@solid-primitives/refs@1.1.4(solid-js@1.9.18)':
     dependencies:
-      '@solid-primitives/utils': 6.4.1(solid-js@1.9.17)
-      solid-js: 1.9.17
+      '@solid-primitives/utils': 6.4.1(solid-js@1.9.18)
+      solid-js: 1.9.18
 
-  '@solid-primitives/resize-observer@2.2.0(solid-js@1.9.17)':
+  '@solid-primitives/resize-observer@2.2.0(solid-js@1.9.18)':
     dependencies:
-      '@solid-primitives/event-listener': 2.4.6(solid-js@1.9.17)
-      '@solid-primitives/rootless': 1.5.4(solid-js@1.9.17)
-      '@solid-primitives/static-store': 0.1.4(solid-js@1.9.17)
-      '@solid-primitives/utils': 6.4.1(solid-js@1.9.17)
-      solid-js: 1.9.17
+      '@solid-primitives/event-listener': 2.4.6(solid-js@1.9.18)
+      '@solid-primitives/rootless': 1.5.4(solid-js@1.9.18)
+      '@solid-primitives/static-store': 0.1.4(solid-js@1.9.18)
+      '@solid-primitives/utils': 6.4.1(solid-js@1.9.18)
+      solid-js: 1.9.18
 
-  '@solid-primitives/rootless@1.5.4(solid-js@1.9.17)':
+  '@solid-primitives/rootless@1.5.4(solid-js@1.9.18)':
     dependencies:
-      '@solid-primitives/utils': 6.4.1(solid-js@1.9.17)
-      solid-js: 1.9.17
+      '@solid-primitives/utils': 6.4.1(solid-js@1.9.18)
+      solid-js: 1.9.18
 
-  '@solid-primitives/static-store@0.1.4(solid-js@1.9.17)':
+  '@solid-primitives/static-store@0.1.4(solid-js@1.9.18)':
     dependencies:
-      '@solid-primitives/utils': 6.4.1(solid-js@1.9.17)
-      solid-js: 1.9.17
+      '@solid-primitives/utils': 6.4.1(solid-js@1.9.18)
+      solid-js: 1.9.18
 
-  '@solid-primitives/storage@1.3.11(solid-js@1.9.17)':
+  '@solid-primitives/storage@1.3.11(solid-js@1.9.18)':
     dependencies:
-      '@solid-primitives/utils': 6.4.1(solid-js@1.9.17)
-      solid-js: 1.9.17
+      '@solid-primitives/utils': 6.4.1(solid-js@1.9.18)
+      solid-js: 1.9.18
 
-  '@solid-primitives/transition-group@1.1.2(solid-js@1.9.17)':
+  '@solid-primitives/transition-group@1.1.2(solid-js@1.9.18)':
     dependencies:
-      solid-js: 1.9.17
+      solid-js: 1.9.18
 
-  '@solid-primitives/trigger@1.2.4(solid-js@1.9.17)':
+  '@solid-primitives/trigger@1.2.4(solid-js@1.9.18)':
     dependencies:
-      '@solid-primitives/utils': 6.4.1(solid-js@1.9.17)
-      solid-js: 1.9.17
+      '@solid-primitives/utils': 6.4.1(solid-js@1.9.18)
+      solid-js: 1.9.18
 
-  '@solid-primitives/utils@6.4.1(solid-js@1.9.17)':
+  '@solid-primitives/utils@6.4.1(solid-js@1.9.18)':
     dependencies:
-      solid-js: 1.9.17
+      solid-js: 1.9.18
 
   '@standard-schema/spec@1.1.0': {}
 
@@ -5036,11 +5045,11 @@ snapshots:
 
   '@swc/helpers@0.5.21':
     dependencies:
-      tslib: 2.8.1
+      tslib: 2.9.1
 
   '@swc/helpers@0.5.23':
     dependencies:
-      tslib: 2.8.1
+      tslib: 2.9.1
 
   '@swc/types@0.1.28':
     dependencies:
@@ -5120,54 +5129,56 @@ snapshots:
     dependencies:
       remove-accents: 0.5.0
 
-  '@tanstack/query-core@5.104.5': {}
+  '@tanstack/query-core@5.105.0': {}
 
-  '@tanstack/query-devtools@5.104.5(csstype@3.2.3)':
+  '@tanstack/query-core@5.105.1': {}
+
+  '@tanstack/query-devtools@5.105.0(csstype@3.2.3)':
     dependencies:
-      '@kobalte/core': 0.13.14(solid-js@1.9.17)
-      '@solid-primitives/keyed': 1.5.3(solid-js@1.9.17)
-      '@solid-primitives/resize-observer': 2.2.0(solid-js@1.9.17)
-      '@solid-primitives/storage': 1.3.11(solid-js@1.9.17)
+      '@kobalte/core': 0.13.14(solid-js@1.9.18)
+      '@solid-primitives/keyed': 1.5.3(solid-js@1.9.18)
+      '@solid-primitives/resize-observer': 2.2.0(solid-js@1.9.18)
+      '@solid-primitives/storage': 1.3.11(solid-js@1.9.18)
       '@tanstack/match-sorter-utils': 9.2.6
-      '@tanstack/query-core': 5.104.5
+      '@tanstack/query-core': 5.105.0
       clsx: 2.1.1
       goober: 2.1.19(csstype@3.2.3)
-      solid-js: 1.9.17
-      solid-transition-group: 0.2.3(solid-js@1.9.17)
+      solid-js: 1.9.18
+      solid-transition-group: 0.2.3(solid-js@1.9.18)
       superjson: 2.2.6
     transitivePeerDependencies:
       - csstype
 
-  '@tanstack/query-persist-client-core@5.104.5':
+  '@tanstack/query-persist-client-core@5.105.0':
     dependencies:
-      '@tanstack/query-core': 5.104.5
+      '@tanstack/query-core': 5.105.0
 
-  '@tanstack/query-sync-storage-persister@5.104.5':
+  '@tanstack/query-sync-storage-persister@5.105.0':
     dependencies:
-      '@tanstack/query-core': 5.104.5
-      '@tanstack/query-persist-client-core': 5.104.5
+      '@tanstack/query-core': 5.105.0
+      '@tanstack/query-persist-client-core': 5.105.0
 
-  '@tanstack/react-query-devtools@5.104.5(@tanstack/react-query@5.104.5(@types/react@19.3.0)(react@19.3.1))(@types/react@19.3.0)(csstype@3.2.3)(react@19.3.1)':
+  '@tanstack/react-query-devtools@5.105.0(@tanstack/react-query@5.105.0(@types/react@19.3.0)(react@19.3.1))(@types/react@19.3.0)(csstype@3.2.3)(react@19.3.1)':
     dependencies:
-      '@tanstack/query-devtools': 5.104.5(csstype@3.2.3)
-      '@tanstack/react-query': 5.104.5(@types/react@19.3.0)(react@19.3.1)
+      '@tanstack/query-devtools': 5.105.0(csstype@3.2.3)
+      '@tanstack/react-query': 5.105.0(@types/react@19.3.0)(react@19.3.1)
       react: 19.3.1
     optionalDependencies:
       '@types/react': 19.3.0
     transitivePeerDependencies:
       - csstype
 
-  '@tanstack/react-query-persist-client@5.104.5(@tanstack/react-query@5.104.5(@types/react@19.3.0)(react@19.3.1))(@types/react@19.3.0)(react@19.3.1)':
+  '@tanstack/react-query-persist-client@5.105.0(@tanstack/react-query@5.105.0(@types/react@19.3.0)(react@19.3.1))(@types/react@19.3.0)(react@19.3.1)':
     dependencies:
-      '@tanstack/query-persist-client-core': 5.104.5
-      '@tanstack/react-query': 5.104.5(@types/react@19.3.0)(react@19.3.1)
+      '@tanstack/query-persist-client-core': 5.105.0
+      '@tanstack/react-query': 5.105.0(@types/react@19.3.0)(react@19.3.1)
       react: 19.3.1
     optionalDependencies:
       '@types/react': 19.3.0
 
-  '@tanstack/react-query@5.104.5(@types/react@19.3.0)(react@19.3.1)':
+  '@tanstack/react-query@5.105.0(@types/react@19.3.0)(react@19.3.1)':
     dependencies:
-      '@tanstack/query-core': 5.104.5
+      '@tanstack/query-core': 5.105.0
       react: 19.3.1
     optionalDependencies:
       '@types/react': 19.3.0
@@ -5250,11 +5261,11 @@ snapshots:
     dependencies:
       '@tauri-apps/api': 2.12.4
 
-  '@tauri-apps/plugin-deep-link@2.6.2':
+  '@tauri-apps/plugin-deep-link@2.6.3':
     dependencies:
       '@tauri-apps/api': 2.12.4
 
-  '@tauri-apps/plugin-dialog@2.8.3':
+  '@tauri-apps/plugin-dialog@2.8.4':
     dependencies:
       '@tauri-apps/api': 2.12.4
 
@@ -5270,7 +5281,7 @@ snapshots:
     dependencies:
       '@tauri-apps/api': 2.12.4
 
-  '@tauri-apps/plugin-notification@2.7.0':
+  '@tauri-apps/plugin-notification@2.8.0':
     dependencies:
       '@tauri-apps/api': 2.12.4
 
@@ -5333,7 +5344,7 @@ snapshots:
 
   '@tybys/wasm-util@0.10.3':
     dependencies:
-      tslib: 2.8.1
+      tslib: 2.9.1
     optional: true
 
   '@types/aria-query@5.0.4': {}
@@ -5685,7 +5696,7 @@ snapshots:
 
   aria-hidden@1.2.6:
     dependencies:
-      tslib: 2.8.1
+      tslib: 2.9.1
 
   aria-query@5.3.0:
     dependencies:
@@ -6328,11 +6339,11 @@ snapshots:
     dependencies:
       is-callable: 1.2.7
 
-  framer-motion@14.6.0(react-dom@19.3.1(react@19.3.1))(react@19.3.1):
+  framer-motion@14.8.0(react-dom@19.3.1(react@19.3.1))(react@19.3.1):
     dependencies:
-      motion-dom: 14.6.0
-      motion-utils: 14.6.0
-      tslib: 2.8.1
+      motion-dom: 14.8.0
+      motion-utils: 14.7.0
+      tslib: 2.9.1
     optionalDependencies:
       react: 19.3.1
       react-dom: 19.3.1(react@19.3.1)
@@ -6464,7 +6475,7 @@ snapshots:
 
   html-parse-stringify@4.0.1: {}
 
-  i18next@26.5.6(typescript@6.0.3):
+  i18next@26.5.11(typescript@6.0.3):
     optionalDependencies:
       typescript: 6.0.3
 
@@ -6859,7 +6870,7 @@ snapshots:
     dependencies:
       yallist: 3.1.1
 
-  lucide-react@1.61.0(@types/react@19.3.0)(react@19.3.1):
+  lucide-react@1.64.0(@types/react@19.3.0)(react@19.3.1):
     dependencies:
       react: 19.3.1
     optionalDependencies:
@@ -6903,11 +6914,11 @@ snapshots:
 
   minimist@1.2.8: {}
 
-  motion-dom@14.6.0:
+  motion-dom@14.8.0:
     dependencies:
-      motion-utils: 14.6.0
+      motion-utils: 14.7.0
 
-  motion-utils@14.6.0: {}
+  motion-utils@14.7.0: {}
 
   ms@2.1.3: {}
 
@@ -6969,7 +6980,7 @@ snapshots:
       object-keys: 1.1.1
       safe-push-apply: 1.0.0
 
-  ox@0.14.57(typescript@6.0.3)(zod@4.6.7):
+  ox@0.14.59(typescript@6.0.3)(zod@4.6.7):
     dependencies:
       '@adraffy/ens-normalize': 1.11.1
       '@noble/ciphers': 1.3.0
@@ -7075,11 +7086,11 @@ snapshots:
       react: 19.3.1
       scheduler: 0.28.0
 
-  react-i18next@17.1.3(i18next@26.5.6(typescript@6.0.3))(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(typescript@6.0.3):
+  react-i18next@17.1.9(i18next@26.5.11(typescript@6.0.3))(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(typescript@6.0.3):
     dependencies:
       '@babel/runtime': 7.29.10
       html-parse-stringify: 4.0.1
-      i18next: 26.5.6(typescript@6.0.3)
+      i18next: 26.5.11(typescript@6.0.3)
       react: 19.3.1
       use-sync-external-store: 1.7.0(react@19.3.1)
     optionalDependencies:
@@ -7105,7 +7116,7 @@ snapshots:
     dependencies:
       react: 19.3.1
       react-style-singleton: 2.2.3(@types/react@19.3.0)(react@19.3.1)
-      tslib: 2.8.1
+      tslib: 2.9.1
     optionalDependencies:
       '@types/react': 19.3.0
 
@@ -7114,7 +7125,7 @@ snapshots:
       react: 19.3.1
       react-remove-scroll-bar: 2.3.8(@types/react@19.3.0)(react@19.3.1)
       react-style-singleton: 2.2.3(@types/react@19.3.0)(react@19.3.1)
-      tslib: 2.8.1
+      tslib: 2.9.1
       use-callback-ref: 1.3.3(@types/react@19.3.0)(react@19.3.1)
       use-sidecar: 1.1.3(@types/react@19.3.0)(react@19.3.1)
     optionalDependencies:
@@ -7124,11 +7135,11 @@ snapshots:
     dependencies:
       get-nonce: 1.0.1
       react: 19.3.1
-      tslib: 2.8.1
+      tslib: 2.9.1
     optionalDependencies:
       '@types/react': 19.3.0
 
-  react-virtuoso@4.18.19(react-dom@19.3.1(react@19.3.1))(react@19.3.1):
+  react-virtuoso@4.18.20(react-dom@19.3.1(react@19.3.1))(react@19.3.1):
     dependencies:
       react: 19.3.1
       react-dom: 19.3.1(react@19.3.1)
@@ -7323,27 +7334,27 @@ snapshots:
 
   slash@3.0.0: {}
 
-  solid-js@1.9.17:
+  solid-js@1.9.18:
     dependencies:
       csstype: 3.2.3
       seroval: 1.6.12
       seroval-plugins: 1.6.12(seroval@1.6.12)
 
-  solid-presence@0.2.0(solid-js@1.9.17):
+  solid-presence@0.2.0(solid-js@1.9.18):
     dependencies:
-      '@corvu/utils': 0.4.2(solid-js@1.9.17)
-      solid-js: 1.9.17
+      '@corvu/utils': 0.4.2(solid-js@1.9.18)
+      solid-js: 1.9.18
 
-  solid-prevent-scroll@0.1.11(solid-js@1.9.17):
+  solid-prevent-scroll@0.1.11(solid-js@1.9.18):
     dependencies:
-      '@corvu/utils': 0.4.2(solid-js@1.9.17)
-      solid-js: 1.9.17
+      '@corvu/utils': 0.4.2(solid-js@1.9.18)
+      solid-js: 1.9.18
 
-  solid-transition-group@0.2.3(solid-js@1.9.17):
+  solid-transition-group@0.2.3(solid-js@1.9.18):
     dependencies:
-      '@solid-primitives/refs': 1.1.4(solid-js@1.9.17)
-      '@solid-primitives/transition-group': 1.1.2(solid-js@1.9.17)
-      solid-js: 1.9.17
+      '@solid-primitives/refs': 1.1.4(solid-js@1.9.18)
+      '@solid-primitives/transition-group': 1.1.2(solid-js@1.9.18)
+      solid-js: 1.9.18
 
   source-map-js@1.2.2: {}
 
@@ -7463,6 +7474,8 @@ snapshots:
 
   tslib@2.8.1: {}
 
+  tslib@2.9.1: {}
+
   type-check@0.4.0:
     dependencies:
       prelude-ls: 1.2.1
@@ -7567,7 +7580,7 @@ snapshots:
   use-callback-ref@1.3.3(@types/react@19.3.0)(react@19.3.1):
     dependencies:
       react: 19.3.1
-      tslib: 2.8.1
+      tslib: 2.9.1
     optionalDependencies:
       '@types/react': 19.3.0
 
@@ -7575,7 +7588,7 @@ snapshots:
     dependencies:
       detect-node-es: 1.1.0
       react: 19.3.1
-      tslib: 2.8.1
+      tslib: 2.9.1
     optionalDependencies:
       '@types/react': 19.3.0
 
@@ -7609,7 +7622,7 @@ snapshots:
       d3-time: 3.1.0
       d3-timer: 3.0.1
 
-  viem@2.57.11(bufferutil@4.1.0)(typescript@6.0.3)(utf-8-validate@6.0.6)(zod@4.6.7):
+  viem@2.57.14(bufferutil@4.1.0)(typescript@6.0.3)(utf-8-validate@6.0.6)(zod@4.6.7):
     dependencies:
       '@noble/curves': 1.9.1
       '@noble/hashes': 1.8.0
@@ -7617,7 +7630,7 @@ snapshots:
       '@scure/bip39': 1.6.0
       abitype: 1.2.3(typescript@6.0.3)(zod@4.6.7)
       isows: 1.0.7(ws@8.21.0(bufferutil@4.1.0)(utf-8-validate@6.0.6))
-      ox: 0.14.57(typescript@6.0.3)(zod@4.6.7)
+      ox: 0.14.59(typescript@6.0.3)(zod@4.6.7)
       ws: 8.21.0(bufferutil@4.1.0)(utf-8-validate@6.0.6)
     optionalDependencies:
       typescript: 6.0.3
